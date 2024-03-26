@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "htb-scripts"
+version = "0.1.0"
+description = "Different exploits I write for HTB"
+authors = ["Adrian Gonzalez <adriangonzalezsanchez1996@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+requests = "^2.31.0"
+colorama = "^0.4.6"
+mechanize = "^0.4.9"
+xmltodict = "^0.13.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
